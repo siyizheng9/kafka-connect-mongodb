@@ -16,9 +16,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafka_broker:
+  kafkabroker:
     image: confluentinc/cp-kafka:3.2.0
-    hostname: kafka_broker
+    hostname: kafkabroker
     depends_on:
       - zookeeper
     ports:
@@ -26,43 +26,44 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafka_broker:9092'
+      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafkabroker:9092'
+      #KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
 
-  kafka_schema_registry:
+  schemaregistry:
     image: confluentinc/cp-schema-registry:3.2.0
-    hostname: kafka_schema_registry
+    hostname: schemaregistry
     depends_on:
       - zookeeper
-      - kafka_broker
+      - kafkabroker
     ports:
       - "8081:8081"
     environment:
-      SCHEMA_REGISTRY_HOST_NAME: kafka_schema_registry
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: 'zookeeper:2181'
 
-  kafka_connect:
+  kafkaconnect:
     image: confluentinc/cp-kafka-connect:3.2.0
-    hostname: kafka_connect
+    hostname: kafkaconnect
     depends_on:
       - zookeeper
-      - kafka_broker
-      - kafka_schema_registry
+      - kafkabroker
+      - schemaregistry
     ports:
       - "8083:8083"
     volumes:
       - ../../../../target:/etc/kafka-connect/jars
     environment:
-      CONNECT_BOOTSTRAP_SERVERS: 'kafka_broker:9092'
-      CONNECT_REST_ADVERTISED_HOST_NAME: kafka_connect
+      CONNECT_BOOTSTRAP_SERVERS: 'kafkabroker:9092'
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafkaconnect
       CONNECT_REST_PORT: 8083
       CONNECT_GROUP_ID: compose-connect-group
       CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
       CONNECT_OFFSET_STORAGE_TOPIC: docker-connect-offsets
       CONNECT_STATUS_STORAGE_TOPIC: docker-connect-status
       CONNECT_KEY_CONVERTER: io.confluent.connect.avro.AvroConverter
-      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: 'http://kafka_schema_registry:8081'
+      CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schemaregistry:8081'
       CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
-      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://kafka_schema_registry:8081'
+      CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: 'http://schemaregistry:8081'
       CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'

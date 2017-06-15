@@ -32,6 +32,7 @@ import org.testcontainers.containers.DockerComposeContainer;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -40,18 +41,18 @@ public class ContainerTest {
 
     public static String COMPOSE_FILE = "src/test/resources/docker/compose-env.yml";
 
-    public static String KAFKA_BROKER_SERVICE = "kafka_broker_1";
+    public static String KAFKA_BROKER_SERVICE = "kafkabroker_1";
     public static int KAFKA_BROKER_PORT = 9092;
 
-    public static String KAFKA_CONNECT_SERVICE = "kafka_connect_1";
+    public static String KAFKA_CONNECT_SERVICE = "kafkaconnect_1";
     public static int KAFKA_CONNECT_PORT = 8083;
 
-    public static String KAFKA_SCHEMA_REG_SERVICE = "kafka_schema_registry_1";
+    public static String KAFKA_SCHEMA_REG_SERVICE = "schemaregistry_1";
     public static int KAFKA_SCHEMA_REG_PORT = 8081;
 
     public static String MONGODB_SERVICE = "mongodb_1";
     public static int MONGODB_PORT = 27017;
-
+/*
     @ClassRule
     public static DockerComposeContainer CONTAINER_ENV =
             new DockerComposeContainer(new File(COMPOSE_FILE))
@@ -105,7 +106,7 @@ public class ContainerTest {
 
         assert(true);
     }
-
+*/
     @Test
     @DisplayName("test producing record(s) to kafka and check resulting document(s) in mongodb sink")
     public void firstBasicTestE2E() throws IOException {
@@ -113,7 +114,7 @@ public class ContainerTest {
         //TODO: read this from config file
         String config = "{\"name\": \"e2e-test-mongo-sink\",\"config\": {\"connector.class\": \"at.grahsl.kafka.connect.mongodb.MongoDbSinkConnector\",  \"topics\": \"e2e-test-topic\",  \"mongodb.connection.uri\": \"mongodb://mongodb:27017/kafkaconnect?w=1&journal=true\",  \"mongodb.document.id.strategy\": \"at.grahsl.kafka.connect.mongodb.processor.id.strategy.ProvidedInValueStrategy\",  \"mongodb.collection\": \"e2e-test-collection\"}}";
 
-        registerMongoDBSinkConnector(config);
+        //registerMongoDBSinkConnector(config);
 
         //TODO: read demo data from test files
         produceKafkaAvroRecord();
@@ -123,31 +124,41 @@ public class ContainerTest {
 
     private static void produceKafkaAvroRecord() {
         Properties props = new Properties();
-        props.put("bootstrap.servers", CONTAINER_ENV.getServiceHost(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT)
-                + ":" +
-                CONTAINER_ENV.getServicePort(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT));
+                props.put("bootstrap.servers","localhost:9092");
+                //props.put("bootstrap.servers", CONTAINER_ENV.getServiceHost(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT)
+                //+ ":" +
+                //CONTAINER_ENV.getServicePort(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT));
         props.put("key.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
         props.put("value.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
-        props.put("schema.registry.url", "http://"+CONTAINER_ENV.getServiceHost(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT)
-                + ":" +
-                CONTAINER_ENV.getServicePort(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT));
+        //props.put("schema.registry.url", "http://"+CONTAINER_ENV.getServiceHost(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT)
+        //        + ":" +
+        //        CONTAINER_ENV.getServicePort(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT));
+        props.put("schema.registry.url","http://localhost:8081");
+        props.put("max.block.ms",10_000L);
 
         KafkaProducer<String, TweetMsg> producer = new KafkaProducer<>(props);
 
-        for(int i = 0; i < 100; i++) {
+        for(int i = 0; i < 10; i++) {
             TweetMsg tweet = TweetMsg.newBuilder()
                     .setId$1(123456789000L+i)
                     .setText("test tweet "+(i+1)+": end2end testing apache kafka <-> mongodb sink connector is fun!")
                     .setHashtags(Arrays.asList(new String[]{"t"+i,"kafka","mongodb","testing"}))
                     .build();
-            ProducerRecord<String, TweetMsg> record = new ProducerRecord<>("e2e-test-topic", tweet);
-            System.out.println("producer sending -> " + tweet.toString());
+            //ProducerRecord<String, TweetMsg> record = new ProducerRecord<>("e2e-test-topic", tweet);
+            ProducerRecord<String, TweetMsg> record = new ProducerRecord<>("e2e-testing", tweet);
+            System.out.println(LocalDateTime.now() + " producer sending -> " + tweet.toString());
             producer.send(record);
+            System.out.println(LocalDateTime.now() + " record sent");
+            System.out.print(LocalDateTime.now());
+            try {
+                System.out.println("waiting...");
+                Thread.sleep(1000L);
+            } catch (InterruptedException e) {}
         }
 
         producer.close();
     }
-
+/*
     private static void registerMongoDBSinkConnector(String configuration) throws IOException {
 
         RequestBody body = RequestBody.create(
@@ -162,7 +173,8 @@ public class ContainerTest {
 
         Response response = new OkHttpClient().newCall(request).execute();
         assert(response.code() == 201);
+        response.close();
 
     }
-
+*/
 }
