@@ -6,6 +6,14 @@ services:
 env:
   DOCKER_COMPOSE_VERSION: 1.11.2
 
+addons:
+  hosts:
+    - zookeeper
+    - kafkabroker
+    - kafkaconnect
+    - schemaregistry
+    - mongodb
+
 language: java
 
 jdk:

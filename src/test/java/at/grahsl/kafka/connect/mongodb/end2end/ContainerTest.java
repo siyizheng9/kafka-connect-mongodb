@@ -20,6 +20,7 @@ import at.grahsl.kafka.connect.mongodb.data.avro.TweetMsg;
 import okhttp3.*;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.ClassRule;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -52,7 +53,7 @@ public class ContainerTest {
 
     public static String MONGODB_SERVICE = "mongodb_1";
     public static int MONGODB_PORT = 27017;
-/*
+
     @ClassRule
     public static DockerComposeContainer CONTAINER_ENV =
             new DockerComposeContainer(new File(COMPOSE_FILE))
@@ -67,46 +68,6 @@ public class ContainerTest {
         CONTAINER_ENV.starting(Description.EMPTY);
     }
 
-    @AfterAll
-    public static void tearDown() {
-        //CONTAINER_ENV.finished(Description.EMPTY);
-    }
-
-    @Test
-    @DisplayName("show connection urls for containerized services")
-    public void showConnectionURLs() {
-
-        System.out.println(
-                KAFKA_BROKER_SERVICE + " -> " +
-                        CONTAINER_ENV.getServiceHost(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT)
-                        + ": " +
-                        CONTAINER_ENV.getServicePort(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT)
-        );
-
-        System.out.println(
-                KAFKA_CONNECT_SERVICE + " -> " +
-                        CONTAINER_ENV.getServiceHost(KAFKA_CONNECT_SERVICE,KAFKA_CONNECT_PORT)
-                        + ": " +
-                        CONTAINER_ENV.getServicePort(KAFKA_CONNECT_SERVICE,KAFKA_CONNECT_PORT)
-        );
-
-        System.out.println(
-                KAFKA_SCHEMA_REG_SERVICE + " -> " +
-                        CONTAINER_ENV.getServiceHost(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT)
-                        + ": " +
-                        CONTAINER_ENV.getServicePort(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT)
-        );
-
-        System.out.println(
-                MONGODB_SERVICE + " -> " +
-                        CONTAINER_ENV.getServiceHost(MONGODB_SERVICE,MONGODB_PORT)
-                        + ": " +
-                        CONTAINER_ENV.getServicePort(MONGODB_SERVICE,MONGODB_PORT)
-        );
-
-        assert(true);
-    }
-*/
     @Test
     @DisplayName("test producing record(s) to kafka and check resulting document(s) in mongodb sink")
     public void firstBasicTestE2E() throws IOException {
@@ -114,51 +75,48 @@ public class ContainerTest {
         //TODO: read this from config file
         String config = "{\"name\": \"e2e-test-mongo-sink\",\"config\": {\"connector.class\": \"at.grahsl.kafka.connect.mongodb.MongoDbSinkConnector\",  \"topics\": \"e2e-test-topic\",  \"mongodb.connection.uri\": \"mongodb://mongodb:27017/kafkaconnect?w=1&journal=true\",  \"mongodb.document.id.strategy\": \"at.grahsl.kafka.connect.mongodb.processor.id.strategy.ProvidedInValueStrategy\",  \"mongodb.collection\": \"e2e-test-collection\"}}";
 
-        //registerMongoDBSinkConnector(config);
+        registerMongoDBSinkConnector(config);
 
         //TODO: read demo data from test files
         produceKafkaAvroRecord();
 
         //TODO: read back from MongoDB and verify results
+        System.out.println("TODO: read back some data ...");
     }
 
     private static void produceKafkaAvroRecord() {
         Properties props = new Properties();
-                props.put("bootstrap.servers","localhost:9092");
-                //props.put("bootstrap.servers", CONTAINER_ENV.getServiceHost(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT)
-                //+ ":" +
-                //CONTAINER_ENV.getServicePort(KAFKA_BROKER_SERVICE,KAFKA_BROKER_PORT));
+        props.put("bootstrap.servers","kafkabroker:9092");
         props.put("key.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
         props.put("value.serializer", "io.confluent.kafka.serializers.KafkaAvroSerializer");
-        //props.put("schema.registry.url", "http://"+CONTAINER_ENV.getServiceHost(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT)
-        //        + ":" +
-        //        CONTAINER_ENV.getServicePort(KAFKA_SCHEMA_REG_SERVICE,KAFKA_SCHEMA_REG_PORT));
-        props.put("schema.registry.url","http://localhost:8081");
-        props.put("max.block.ms",10_000L);
+        props.put("schema.registry.url","http://schemaregistry:8081");
 
         KafkaProducer<String, TweetMsg> producer = new KafkaProducer<>(props);
 
-        for(int i = 0; i < 10; i++) {
+        for(int i = 0; i < 50; i++) {
+
             TweetMsg tweet = TweetMsg.newBuilder()
                     .setId$1(123456789000L+i)
                     .setText("test tweet "+(i+1)+": end2end testing apache kafka <-> mongodb sink connector is fun!")
                     .setHashtags(Arrays.asList(new String[]{"t"+i,"kafka","mongodb","testing"}))
                     .build();
-            //ProducerRecord<String, TweetMsg> record = new ProducerRecord<>("e2e-test-topic", tweet);
-            ProducerRecord<String, TweetMsg> record = new ProducerRecord<>("e2e-testing", tweet);
+
+            ProducerRecord<String, TweetMsg> record = new ProducerRecord<>("e2e-test-topic", tweet);
+
             System.out.println(LocalDateTime.now() + " producer sending -> " + tweet.toString());
-            producer.send(record);
-            System.out.println(LocalDateTime.now() + " record sent");
-            System.out.print(LocalDateTime.now());
-            try {
-                System.out.println("waiting...");
-                Thread.sleep(1000L);
-            } catch (InterruptedException e) {}
+
+            producer.send(record, (RecordMetadata r, Exception e) -> {
+                if (e != null) {
+                    System.out.println("error: producing tweet "+tweet+" failed");
+                    e.printStackTrace();
+                }
+            });
+
         }
 
         producer.close();
     }
-/*
+
     private static void registerMongoDBSinkConnector(String configuration) throws IOException {
 
         RequestBody body = RequestBody.create(
@@ -166,8 +124,7 @@ public class ContainerTest {
         );
 
         Request request = new Request.Builder()
-                .url("http://"+CONTAINER_ENV.getServiceHost(KAFKA_CONNECT_SERVICE,KAFKA_CONNECT_PORT)
-                        +":"+ CONTAINER_ENV.getServicePort(KAFKA_CONNECT_SERVICE,KAFKA_CONNECT_PORT) +"/connectors")
+                .url("http://kafkaconnect:8083/connectors")
                 .post(body)
                 .build();
 
@@ -176,5 +133,5 @@ public class ContainerTest {
         response.close();
 
     }
-*/
+
 }
