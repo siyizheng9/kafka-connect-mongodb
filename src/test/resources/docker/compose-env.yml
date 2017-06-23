@@ -27,7 +27,6 @@ services:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://kafkabroker:9092'
-      #KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
 
   schemaregistry:
     image: confluentinc/cp-schema-registry:3.2.0
