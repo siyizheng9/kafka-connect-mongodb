@@ -19,6 +19,7 @@
         <junit.platform.version>1.0.0-M4</junit.platform.version>
         <mockito.version>2.7.15</mockito.version>
         <hamcrest.version>2.0.0.0</hamcrest.version>
+        <jackson.version>2.9.0</jackson.version>
     </properties>
 
     <dependencies>
@@ -42,6 +43,16 @@
             <groupId>com.github.jcustenborder.kafka.connect</groupId>
             <artifactId>connect-utils</artifactId>
             <version>[0.2.31,0.2.1000)</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>12.0</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
