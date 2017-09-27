@@ -1,3 +1,3 @@
 # Kafka Connect MongoDB
 
-Forked from https://github.com/evokly/kafka-connect-mqtt
+Forked from https://github.com/hpgrahsl/kafka-connect-mongodb
