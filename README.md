@@ -1,3 +1,5 @@
 # Kafka Connect MongoDB
 
-Forked from https://github.com/hpgrahsl/kafka-connect-mongodb
+Forked from [Kafka Connect MongoDB](https://github.com/hpgrahsl/kafka-connect-mongodb)
+
+Changed converter and topic settings in `config/MongoDbSinkConnector.properties`.
